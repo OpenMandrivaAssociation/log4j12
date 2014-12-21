@@ -1,9 +1,11 @@
+%{?_javapackages_macros:%_javapackages_macros}
 %global archiversion %(echo %{version} | tr . _ )
 
 Name:          log4j12
 Version:       1.2.17
-Release:       7%{?dist}
+Release:       7.1
 Summary:       Java logging package
+Group:		Development/Java
 License:       ASL 2.0
 URL:           http://logging.apache.org/log4j/1.2/
 Source0:       https://github.com/apache/log4j/archive/v%{archiversion}.tar.gz
