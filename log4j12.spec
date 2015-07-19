@@ -3,7 +3,7 @@
 
 Name:          log4j12
 Version:       1.2.17
-Release:       7.1
+Release:       7.2
 Summary:       Java logging package
 Group:		Development/Java
 License:       ASL 2.0
