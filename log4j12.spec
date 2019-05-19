@@ -1,31 +1,25 @@
-%{?_javapackages_macros:%_javapackages_macros}
-%global archiversion %(echo %{version} | tr . _ )
+%define archiversion %(echo %{version} | tr . _ )
 
-Name:          log4j12
-Version:       1.2.17
-Release:       7.3
-Summary:       Java logging package
+Name:		log4j12
+Version:	1.2.17
+Release:	8
+Summary:	Java logging package
 Group:		Development/Java
-License:       ASL 2.0
-URL:           http://logging.apache.org/log4j/1.2/
-Source0:       https://github.com/apache/log4j/archive/v%{archiversion}.tar.gz
+License:	ASL 2.0
+URL:		http://logging.apache.org/log4j/1.2/
+Source0:	https://github.com/apache/log4j/archive/v%{archiversion}.tar.gz
 
-Source1:       log4j.catalog
+Source1:	log4j.catalog
 
-Patch0:        0001-logfactor5-changed-userdir.patch
-Patch1:        0009-Fix-tests.patch
-Patch2:        0010-Fix-javadoc-link.patch
+Patch0:		0001-logfactor5-changed-userdir.patch
+Patch1:		0009-Fix-tests.patch
+Patch2:		0010-Fix-javadoc-link.patch
 
-BuildRequires: mvn(ant-contrib:ant-contrib)
-BuildRequires: mvn(javax.mail:mail)
-BuildRequires: mvn(org.apache.ant:ant-junit)
-BuildRequires: mvn(org.apache.geronimo.specs:geronimo-jms_1.1_spec)
-BuildRequires: mvn(org.apache.geronimo.specs:specs:pom:)
-BuildRequires: mvn(oro:oro)
-BuildRequires: mvn(junit:junit)
+BuildRequires:	jdk-current
+BuildRequires:	jmod(java.mail)
+BuildRequires:	jmod(java.jms)
+BuildRequires:	jmod(java.activation)
 
-BuildRequires: maven-local
-Obsoletes:     log4j <= 0:1.2.17-14
 BuildArch:     noarch
 
 %description
@@ -50,35 +44,12 @@ rm -rf docs/api
 %patch1 -p1 -b .fix-tests
 %patch2 -p1 -b .xlink-javadoc
 
-# Remove unavailable plugin
-%pom_remove_plugin :clirr-maven-plugin
-# Remove unwanted plugin
-%pom_remove_plugin :maven-site-plugin
-%pom_remove_plugin :maven-source-plugin
-%pom_remove_plugin :rat-maven-plugin
-# Disable javadoc jar
-%pom_xpath_remove "pom:build/pom:plugins/pom:plugin[pom:artifactId = 'maven-javadoc-plugin']/pom:executions"
-
-# Remove openejb from dependencies
-%pom_remove_dep org.apache.openejb:javaee-api
-
-# Fix ant gId
-sed -i.ant "s|groupId>ant<|groupId>org.apache.ant<|g" pom.xml
-
-sed -i.javac "s|1.4|1.5|g" pom.xml build.xml
-sed -i.javac "s|1.4|1.5|g" pom.xml build.xml
-sed -i.javac "s|1.1|1.5|g" tests/build.xml
-sed -i.javac "s|1.1|1.5|g" tests/build.xml
-
 # Fix OSGi manifest
 sed -i.javax.jmdns "s|javax.jmdns.*;resolution:=optional,|!javax.jmdns.*,|g" pom.xml
 # Add proper bundle symbolicname
 %pom_xpath_inject "pom:build/pom:plugins/pom:plugin[pom:artifactId = 'maven-bundle-plugin']/pom:configuration/pom:instructions" "
   <Bundle-SymbolicName>org.apache.log4j</Bundle-SymbolicName>
   <_nouses>true</_nouses>"
-
-# Disable build unwanted dll library 
-%pom_xpath_remove "pom:build/pom:plugins/pom:plugin[pom:artifactId = 'maven-antrun-plugin']/pom:executions/pom:execution[pom:phase = 'process-classes' ]"
 
 sed -i 's/\r//g' LICENSE NOTICE src/site/resources/css/*.css
 
@@ -88,26 +59,67 @@ for i in contribs/JimMoore/mail*;do
     mv new "$i"
 done
 
-# Needed by tests
-mkdir -p tests/lib/
-(cd tests/lib/
-  ln -s `build-classpath jakarta-oro`
-  ln -s `build-classpath javamail/mail`
-  ln -s `build-classpath junit`
-)
-
 %mvn_compat_version log4j:log4j 1.2.17 1.2.12 12
 # Remove Microsoft Windows platform specific files
 rm -r src/main/java/org/apache/log4j/nt/NTEventLogAppender.java \
  tests/src/java/org/apache/log4j/nt/NTEventLogAppenderTest.java
 
-%build
+cat >src/main/java/module-info.java <<'EOF'
+module org.apache.log4j.v12 {
+	exports org.apache.log4j;
+	exports org.apache.log4j.chainsaw;
+	exports org.apache.log4j.config;
+	exports org.apache.log4j.helpers;
+	exports org.apache.log4j.jdbc;
+	exports org.apache.log4j.jmx;
+	exports org.apache.log4j.lf5;
+	exports org.apache.log4j.lf5.util;
+	exports org.apache.log4j.lf5.viewer;
+	exports org.apache.log4j.lf5.viewer.categoryexplorer;
+	exports org.apache.log4j.lf5.viewer.configure;
+	exports org.apache.log4j.net;
+	exports org.apache.log4j.or;
+	exports org.apache.log4j.or.jms;
+	exports org.apache.log4j.or.sax;
+	exports org.apache.log4j.pattern;
+	exports org.apache.log4j.rewrite;
+	exports org.apache.log4j.spi;
+	exports org.apache.log4j.varia;
+	exports org.apache.log4j.xml;
 
-%mvn_file log4j:log4j log4j %{name}
-%mvn_build
+	requires java.jms;
+	requires java.mail;
+	requires java.activation;
+	requires java.xml;
+	requires java.management;
+	requires java.naming;
+	requires java.desktop;
+	requires java.sql;
+}
+EOF
+
+%build
+cd src/main/java
+find . -name "*.java" |xargs javac -p %{_javadir}/modules -d ../classes
+# Javadoc docs are too outdated to be even close to working
+#javadoc -html4 -p %{_datadir}/modules org.apache.log4j org.apache.log4j.xml
+cd ../classes
+find . |xargs jar cf org.apache.log4j-%{version}.jar
+jar i org.apache.log4j-%{version}.jar
 
 %install
-%mvn_install -X
+mkdir -p %{buildroot}%{_javadir}/modules %{buildroot}%{_mavenpomdir}
+cp src/main/classes/org.apache.log4j-%{version}.jar %{buildroot}%{_javadir}/modules
+
+ln -s modules/org.apache.log4j-%{version}.jar %{buildroot}%{_javadir}
+ln -s modules/org.apache.log4j-%{version}.jar %{buildroot}%{_javadir}/log4j-%{version}.jar
+ln -s modules/org.apache.log4j-%{version}.jar %{buildroot}%{_javadir}/log4j12-%{version}.jar
+
+cp pom.xml %{buildroot}%{_mavenpomdir}/log4j-%{version}.pom
+cp pom.xml %{buildroot}%{_mavenpomdir}/log4j12-%{version}.pom
+
+%add_maven_depmap log4j-%{version}.pom org.apache.log4j-%{version}.jar
+%add_maven_depmap log4j12-%{version}.pom org.apache.log4j-%{version}.jar
 
 # DTD and the SGML catalog (XML catalog handled in scriptlets)
 install -pD -T -m 644 src/main/javadoc/org/apache/log4j/xml/doc-files/log4j.dtd \
@@ -150,29 +162,8 @@ fi
 
 %files -f .mfiles
 %{_datadir}/sgml/log4j
+%{_javadir}/*.jar
+%{_javadir}/modules/*.jar
 %doc LICENSE NOTICE
 
-%files javadoc -f .mfiles-javadoc
-%doc LICENSE NOTICE
-
-%changelog
-* Fri Sep 05 2014 gil cattaneo <puntogil@libero.it> 1.2.17-7
-- fix rhbz#1120854
-
-* Fri Jul 18 2014 gil cattaneo <puntogil@libero.it> 1.2.17-6
-- enabling XMvn debugging output rhbz#1120854
-
-* Thu Jul 10 2014 gil cattaneo <puntogil@libero.it> 1.2.17-5
-- fix conflict rhbz#1114135
-
-* Wed Jun 18 2014 Mikolaj Izdebski <mizdebsk@redhat.com> - 1.2.17-4
-- Add compat version 1.2.12 (used by velocity and xbean)
-
-* Sat Jun 07 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.2.17-3
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
-
-* Thu May 22 2014 gil cattaneo <puntogil@libero.it> 1.2.17-2
-- fix compat version
-
-* Thu May 22 2014 gil cattaneo <puntogil@libero.it> 1.2.17-1
-- initial rpm
+#files javadoc
