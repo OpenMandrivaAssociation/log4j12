@@ -16,6 +16,7 @@ Patch1:		0009-Fix-tests.patch
 Patch2:		0010-Fix-javadoc-link.patch
 
 BuildRequires:	jdk-current
+BuildRequires:	javapackages-local
 BuildRequires:	jmod(java.mail)
 BuildRequires:	jmod(java.jms)
 BuildRequires:	jmod(java.activation)
