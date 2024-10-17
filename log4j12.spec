@@ -6,7 +6,7 @@ Release:	9
 Summary:	Java logging package
 Group:		Development/Java
 License:	ASL 2.0
-URL:		http://logging.apache.org/log4j/1.2/
+URL:		https://logging.apache.org/log4j/1.2/
 Source0:	https://github.com/apache/log4j/archive/v%{archiversion}.tar.gz
 
 Source1:	log4j.catalog
